@@ -3,101 +3,114 @@ import {
     TextField,
     Button,
     Typography,
+    Box,
+    Grid,
+    Paper,
+    CircularProgress,
+    Alert,
+    InputAdornment,
+    Tooltip,
+    IconButton,
+    FormControl,
     RadioGroup,
     FormControlLabel,
     Radio,
-    Box,
-    Grid
+    Divider,
+    Card,
+    CardContent,
+    Chip
 } from '@mui/material';
-import CircularProgress from '@mui/material/CircularProgress';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import DeleteIcon from '@mui/icons-material/Delete';
+import CalculateIcon from '@mui/icons-material/Calculate';
+import TextSnippetIcon from '@mui/icons-material/TextSnippet';
+import SecurityIcon from '@mui/icons-material/Security';
+import GppGoodIcon from '@mui/icons-material/GppGood';
 import { sha3_512Hash } from '../../api/sha3_512';
 
 const SHA3_512Crypto = () => {
     const [input, setInput] = useState('');
-    const [result, setResult] = useState('');
+    const [hashResult, setHashResult] = useState('');
     const [encoding, setEncoding] = useState('hex');
     const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
+    const [debugInfo, setDebugInfo] = useState('');
 
-    const handleHash = async () => {
+    const calculateHash = async () => {
+        if (!input) {
+            setError('请输入要哈希的内容');
+            return;
+        }
+
         try {
             setIsLoading(true);
+            setError('');
+            setSuccess('');
+            setDebugInfo('');
+            
+            setDebugInfo(`正在计算SHA3-512哈希: 输入长度=${input.length}, 编码=${encoding}`);
             const response = await sha3_512Hash(input, encoding);
-            setResult(response.data.result);
+            
+            setDebugInfo(`哈希响应: ${JSON.stringify(response.data)}`);
+            
+            if (response.data) {
+                if (response.data.status === 0) {
+                    setHashResult(response.data.result);
+                    setSuccess('SHA3-512哈希计算成功');
+                } else {
+                    setError(response.data.message || '哈希计算失败');
+                }
+            } else {
+                setError('无法获取哈希结果');
+            }
         } catch (error) {
-            alert(`哈希计算失败: ${error.response?.data?.message || error.message}`);
+            console.error("哈希计算错误:", error);
+            setError(`哈希计算失败: ${error.response?.data?.message || error.message}`);
+            setDebugInfo(`计算失败: ${error.toString()}, 响应: ${error.response ? JSON.stringify(error.response.data) : '无响应数据'}`);
         } finally {
             setIsLoading(false);
         }
     };
 
-    return (
-        <Box sx={{
-            color: '#fff',
-            minHeight: '100vh',
-            p: 4,
-            position: 'relative',
-            '&::before': {
-                content: '""',
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                zIndex: -1,
-                opacity: 0.2
-            }
-        }}>
-            {/* 标题 */}
-            <Typography variant="h3" sx={{
-                textAlign: 'center',
-                mb: 4,
-                textShadow: '0 0 5px #00ffff',
-                animation: 'glow 2s ease-in-out infinite',
-                '@keyframes glow': {
-                    '0%': { textShadow: '0 0 10px #00ffff' },
-                    '50%': { textShadow: '0 0 20px #00ffff, 0 0 30px #00ffff' },
-                    '100%': { textShadow: '0 0 10px #00ffff' }
-                }
-            }}>
-                SHA3-512 哈希计算
-            </Typography>
+    const copyToClipboard = (text) => {
+        navigator.clipboard.writeText(text);
+        setSuccess('已复制到剪贴板');
+    };
 
-            <Grid container spacing={4} sx={{
-                maxWidth: 1400,
-                margin: '0 auto',
-                justifyContent: 'center',
-                '@media (max-width: 600px)': {
-                    '& > .MuiGrid-item': {
-                        width: '100%',
-                        maxWidth: 'none',
-                        marginBottom: 2
-                    }
-                }
-            }}>
-                {/* 输入区域 */}
+    const clearFields = () => {
+        setInput('');
+        setHashResult('');
+        setError('');
+        setSuccess('');
+        setDebugInfo('');
+    };
+
+    return (
+        <Box>
+            {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
+            {success && <Alert severity="success" sx={{ mb: 3 }}>{success}</Alert>}
+            {debugInfo && <Alert severity="info" sx={{ mb: 3 }}>{debugInfo}</Alert>}
+            
+            <Paper sx={{ p: 3, mb: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <SecurityIcon sx={{ mr: 1, color: 'primary.main' }} />
+                    <Typography variant="h6">SHA3-512 哈希计算</Typography>
+                    <Chip 
+                        label="量子抗性" 
+                        color="secondary" 
+                        size="small" 
+                        icon={<GppGoodIcon />} 
+                        sx={{ ml: 2, fontWeight: 500 }}
+                    />
+                </Box>
+                
+                <Divider sx={{ mb: 3 }} />
+                
+                <Grid container spacing={3}>
                 <Grid item xs={12} md={6}>
-                    <Box sx={{
-                        height: 270,
-                        width: 450,
-                        background: 'rgba(255,255,255,0.1)',
-                        borderRadius: 4,
-                        p: 3,
-                        backdropFilter: 'blur(12px)',
-                        border: '1px solid rgba(255,255,255,0.3)',
-                        transition: 'all 0.3s',
-                        '&:hover': {
-                            transform: 'translateY(-5px)',
-                            boxShadow: '0 10px 20px rgba(0,255,255,0.2)'
-                        }
-                    }}>
-                        <Typography variant="h5" sx={{
-                            color: '#00ff9d',
-                            mb: 2,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 1
-                        }}>
-                            📥 输入内容
+                        <Typography variant="subtitle1" fontWeight={500} gutterBottom>
+                            输入内容
                         </Typography>
                         <TextField
                             fullWidth
@@ -105,139 +118,124 @@ const SHA3_512Crypto = () => {
                             rows={8}
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
-                            placeholder="输入要计算哈希的内容..."
-                            sx={{
-                                '& .MuiOutlinedInput-root': {
-                                    color: '#fff',
-                                    borderRadius: 2,
-                                    backgroundColor: 'rgba(0,0,0,0.3)',
-                                    '& fieldset': {
-                                        borderColor: '#4a4a4a',
-                                        transition: 'all 0.3s'
-                                    },
-                                    '&:hover fieldset': { borderColor: '#00ffff' },
-                                    '&.Mui-focused fieldset': {
-                                        borderColor: '#00ffff',
-                                        boxShadow: '0 0 15px rgba(0,255,255,0.3)'
-                                    }
-                                }
+                            placeholder="输入要计算哈希的文本..."
+                            variant="outlined"
+                            InputProps={{
+                                startAdornment: (
+                                    <InputAdornment position="start">
+                                        <TextSnippetIcon color="action" />
+                                    </InputAdornment>
+                                )
                             }}
+                            sx={{ mb: 2 }}
                         />
+                        
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <FormControl component="fieldset">
+                                <Typography variant="body2" fontWeight={500} gutterBottom>
+                                    输出格式
+                                </Typography>
+                                <RadioGroup
+                                    row
+                                    value={encoding}
+                                    onChange={(e) => setEncoding(e.target.value)}
+                                >
+                                    <FormControlLabel value="hex" control={<Radio />} label="十六进制" />
+                                    <FormControlLabel value="base64" control={<Radio />} label="Base64" />
+                                </RadioGroup>
+                            </FormControl>
+                            
+                            <Box>
+                                <Tooltip title="清空所有字段">
+                                    <IconButton onClick={clearFields} color="error" sx={{ ml: 1 }}>
+                                        <DeleteIcon />
+                                    </IconButton>
+                                </Tooltip>
+                            </Box>
                     </Box>
                 </Grid>
 
-                {/* 结果区域 */}
                 <Grid item xs={12} md={6}>
-                    <Box sx={{
-                        height: 270,
-                        width: 450,
-                        background: 'rgba(255,255,255,0.1)',
-                        borderRadius: 4,
-                        p: 3,
-                        backdropFilter: 'blur(12px)',
-                        border: '1px solid rgba(255,255,255,0.3)',
-                        transition: 'all 0.3s',
-                        '&:hover': {
-                            transform: 'translateY(-5px)',
-                            boxShadow: '0 10px 20px rgba(0,255,255,0.2)'
-                        }
-                    }}>
-                        <Typography variant="h5" sx={{
-                            color: '#00ff9d',
+                        <Typography variant="subtitle1" fontWeight={500} gutterBottom>
+                            SHA3-512 哈希结果 <Typography component="span" variant="caption" color="text.secondary">(64字节)</Typography>
+                        </Typography>
+                        
+                        <Card variant="outlined" sx={{ 
+                            backgroundColor: 'background.default',
                             mb: 2,
+                            minHeight: '200px',
+                            display: 'flex',
+                            flexDirection: 'column'
+                        }}>
+                            <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                                {!hashResult ? (
+                    <Box sx={{
+                                        flex: 1, 
                             display: 'flex',
                             alignItems: 'center',
-                            gap: 1
-                        }}>
-                            🔒 哈希结果
-                        </Typography>
-                        <TextField
-                            fullWidth
-                            multiline
-                            rows={8}
-                            value={result}
-                            InputProps={{ readOnly: true }}
-                            placeholder="哈希结果将显示在这里..."
-                            sx={{
-                                '& .MuiOutlinedInput-root': {
-                                    color: '#fff',
-                                    borderRadius: 2,
-                                    backgroundColor: 'rgba(0,0,0,0.3)',
-                                    '& fieldset': {
-                                        borderColor: '#4a4a4a',
-                                        transition: 'all 0.3s'
-                                    },
-                                    '&:hover fieldset': { borderColor: '#00ffff' },
-                                    '&.Mui-focused fieldset': {
-                                        borderColor: '#00ffff',
-                                        boxShadow: '0 0 15px rgba(0,255,255,0.3)'
-                                    }
-                                }
-                            }}
-                        />
+                                        justifyContent: 'center',
+                                        color: 'text.secondary',
+                                        fontStyle: 'italic'
+                                    }}>
+                                        哈希结果将显示在这里
                     </Box>
-                </Grid>
-            </Grid>
-
-            {/* 操作控制区域 */}
+                                ) : (
             <Box sx={{
-                mt: 4,
+                                        fontFamily: 'monospace',
+                                        wordBreak: 'break-all',
+                                        fontSize: '0.75rem',
+                                        flex: 1,
                 display: 'flex',
+                                        flexDirection: 'column',
                 justifyContent: 'center',
-                alignItems: 'center',
-                gap: 3,
-                flexWrap: 'wrap'
-            }}>
+                                        lineHeight: 1.5
+                                    }}>
+                                        {hashResult}
+                                    </Box>
+                                )}
+                            </CardContent>
+                        </Card>
+                        
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                 <Button
                     variant="contained"
-                    onClick={handleHash}
-                    disabled={isLoading}
-                    sx={{
-                        background: 'linear-gradient(45deg, #00ffff 30%, #0080ff 90%)',
-                        color: '#000',
-                        px: 6,
-                        minWidth: 180,
-                        borderRadius: 25,
-                        fontSize: '1.1rem',
-                        '&:hover': {
-                            transform: 'scale(1.05)',
-                            boxShadow: '0 0 25px rgba(0,255,255,0.6)'
-                        },
-                        transition: 'all 0.3s'
-                    }}
-                    endIcon={isLoading && <CircularProgress size={24} sx={{ color: '#000' }} />}
-                >
-                    计算哈希
+                                color="primary"
+                                onClick={calculateHash}
+                                disabled={isLoading || !input}
+                                startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : <CalculateIcon />}
+                            >
+                                计算 SHA3-512 哈希
                 </Button>
 
-                <Box sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 2,
-                    background: 'rgba(255,255,255,0.1)',
-                    borderRadius: 4,
-                    p: 1.5
-                }}>
-                    <RadioGroup row value={encoding} onChange={(e) => setEncoding(e.target.value)}>
-                        <FormControlLabel
-                            value="hex"
-                            control={<Radio sx={{ color: '#00ffff!important' }} />}
-                            label={<Typography sx={{ color: '#fff' }}>Hex</Typography>}
-                        />
-                        <FormControlLabel
-                            value="base64"
-                            control={<Radio sx={{ color: '#ff00ff!important' }} />}
-                            label={<Typography sx={{ color: '#fff' }}>Base64</Typography>}
-                        />
-                    </RadioGroup>
-                    <Typography variant="body1" sx={{
-                        color: '#00ff9d',
-                        fontSize: '0.9rem'
-                    }}>
-                        输出格式
+                            <Button
+                                variant="outlined"
+                                onClick={() => copyToClipboard(hashResult)}
+                                disabled={!hashResult}
+                                startIcon={<ContentCopyIcon />}
+                            >
+                                复制结果
+                            </Button>
+                        </Box>
+                    </Grid>
+                </Grid>
+            </Paper>
+            
+            <Paper sx={{ p: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <Typography variant="subtitle2" color="primary" sx={{ fontWeight: 600 }}>
+                        SHA3-512 哈希算法说明
                     </Typography>
                 </Box>
-            </Box>
+                <Typography variant="body2" color="text.secondary">
+                    SHA3-512是SHA-3家族中最强的哈希算法之一，输出长度为512位(64字节)的哈希值。SHA3基于Keccak海绵函数构造，
+                    采用全新的设计理念，与SHA-1、SHA-2系列结构完全不同。SHA3-512提供极高的安全性，被NIST认证为目前最安全的
+                    哈希算法之一，具有抵抗量子计算攻击的潜力。
+                </Typography>
+                <Typography variant="body2" sx={{ mt: 2, color: 'secondary.main', fontWeight: 500 }}>
+                    安全特性：SHA3-512是唯一具有量子计算抗性的官方标准哈希算法，适用于长期数据保护、政府级安全需求、金融系统和
+                    关键基础设施等高安全场景。其512位输出长度使得暴力破解和碰撞攻击在可预见的未来几乎不可能实现。
+                </Typography>
+            </Paper>
         </Box>
     );
 };
