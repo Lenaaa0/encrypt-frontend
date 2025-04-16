@@ -7,9 +7,23 @@ import {
     FormControlLabel,
     Radio,
     Box,
-    Grid
+    Grid,
+    Paper,
+    FormControl,
+    FormLabel,
+    CircularProgress,
+    Alert,
+    InputAdornment,
+    Tooltip,
+    IconButton,
+    MenuItem,
+    Select
 } from '@mui/material';
-import CircularProgress from '@mui/material/CircularProgress';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import DeleteIcon from '@mui/icons-material/Delete';
+import SendIcon from '@mui/icons-material/Send';
+import VpnKeyIcon from '@mui/icons-material/VpnKey';
+import SettingsIcon from '@mui/icons-material/Settings';
 import { aesEncrypt, aesDecrypt } from '../../api/aes';
 
 const AESCrypto = () => {
@@ -17,304 +31,192 @@ const AESCrypto = () => {
     const [plaintext, setPlaintext] = useState('');
     const [ciphertext, setCiphertext] = useState('');
     const [encoding, setEncoding] = useState('hex');
+    const [mode, setMode] = useState('CBC');
     const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
 
     const handleOperation = async (operation) => {
         try {
+            setError('');
+            setSuccess('');
             setIsLoading(true);
+            
             const response = operation === 'encrypt'
-                ? await aesEncrypt(key, plaintext, encoding)
-                : await aesDecrypt(key, ciphertext, encoding);
+                ? await aesEncrypt(key, plaintext, encoding, mode)
+                : await aesDecrypt(key, ciphertext, encoding, mode);
 
             if (response.data.status !== 0) {
-                alert(response.data.message);
+                setError(response.data.message);
                 return;
             }
 
-            operation === 'encrypt'
-                ? setCiphertext(response.data.result)
-                : setPlaintext(response.data.result);
+            if (operation === 'encrypt') {
+                setCiphertext(response.data.result);
+                setSuccess('加密成功');
+            } else {
+                setPlaintext(response.data.result);
+                setSuccess('解密成功');
+            }
         } catch (error) {
-            alert(`操作失败: ${error.response?.data?.message || error.message}`);
+            setError(`操作失败: ${error.response?.data?.message || error.message}`);
         } finally {
             setIsLoading(false);
         }
     };
 
+    const copyToClipboard = (text) => {
+        navigator.clipboard.writeText(text);
+        setSuccess('已复制到剪贴板');
+    };
+
+    const clearFields = () => {
+        setKey('');
+        setPlaintext('');
+        setCiphertext('');
+        setError('');
+        setSuccess('');
+    };
+
     return (
-        <Box sx={{
-            color: '#fff',
-            minHeight: '100vh',
-            p: 4,
-            position: 'relative',
-            '&::before': {
-                content: '""',
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                zIndex: -1,
-                opacity: 0.2
-            }
-        }}>
-            {/* 标题 */}
-            <Typography variant="h3" sx={{
-                textAlign: 'center',
-                mb: 4,
-                textShadow: '0 0 5px #00ffff',
-                animation: 'glow 2s ease-in-out infinite',
-                '@keyframes glow': {
-                    '0%': { textShadow: '0 0 10px #00ffff' },
-                    '50%': { textShadow: '0 0 20px #00ffff, 0 0 30px #00ffff' },
-                    '100%': { textShadow: '0 0 10px #00ffff' }
-                }
-            }}>
-                AES 加密/解密
-            </Typography>
-
-            <Grid container spacing={4} sx={{ maxWidth: 1400, margin: '0 auto', justifyContent: 'center' }}>
-                {/* 密钥输入 */}
-                <Grid item xs={12} sm={6} md={4}>
-                    <Box sx={{
-                        height: 270,
-                        width: 360,
-                        background: 'rgba(255,255,255,0.1)',
-                        borderRadius: 4,
-                        p: 3,
-                        backdropFilter: 'blur(12px)',
-                        border: '1px solid rgba(255,255,255,0.3)',
-                        transition: 'all 0.3s',
-                        '&:hover': {
-                            transform: 'translateY(-5px)',
-                            boxShadow: '0 10px 20px rgba(0,255,255,0.2)'
-                        }
-                    }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                            <Typography variant="h5" sx={{ color: '#00ff9d' }}>
-                                🔑 加密密钥(16/24/32字节)
-                            </Typography>
-                        </Box>
-                        <TextField
-                            fullWidth
-                            multiline
-                            rows={8}
-                            value={key}
-                            onChange={(e) => setKey(e.target.value)}
-                            placeholder="输入加密密钥..."
-                            sx={{
-                                '& .MuiOutlinedInput-root': {
-                                    color: '#fff',
-                                    borderRadius: 2,
-                                    backgroundColor: 'rgba(0,0,0,0.3)',
-                                    '& fieldset': {
-                                        borderColor: '#4a4a4a',
-                                        transition: 'all 0.3s'
-                                    },
-                                    '&:hover fieldset': { borderColor: '#00ffff' },
-                                    '&.Mui-focused fieldset': {
-                                        borderColor: '#00ffff',
-                                        boxShadow: '0 0 15px rgba(0,255,255,0.3)'
-                                    }
-                                }
-                            }}
-                        />
-                    </Box>
+        <Box>
+            {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
+            {success && <Alert severity="success" sx={{ mb: 3 }}>{success}</Alert>}
+            
+            <Paper sx={{ p: 3, mb: 4 }}>
+                <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
+                    <SettingsIcon sx={{ mr: 1 }} /> 加密设置
+                </Typography>
+                
+                <Grid container spacing={3}>
+                    <Grid item xs={12} md={6}>
+                        <FormControl component="fieldset" sx={{ mb: 2 }}>
+                            <FormLabel component="legend">输出编码</FormLabel>
+                            <RadioGroup
+                                row
+                                value={encoding}
+                                onChange={(e) => setEncoding(e.target.value)}
+                            >
+                                <FormControlLabel value="hex" control={<Radio />} label="Hex" />
+                                <FormControlLabel value="base64" control={<Radio />} label="Base64" />
+                            </RadioGroup>
+                        </FormControl>
+                    </Grid>
+                    
+                    <Grid item xs={12} md={6}>
+                        <FormControl fullWidth sx={{ mb: 2 }}>
+                            <FormLabel component="legend">加密模式</FormLabel>
+                            <Select
+                                value={mode}
+                                onChange={(e) => setMode(e.target.value)}
+                                size="small"
+                                sx={{ mt: 1 }}
+                            >
+                                <MenuItem value="ECB">ECB 模式</MenuItem>
+                                <MenuItem value="CBC">CBC 模式</MenuItem>
+                                <MenuItem value="CFB">CFB 模式</MenuItem>
+                                <MenuItem value="OFB">OFB 模式</MenuItem>
+                            </Select>
+                        </FormControl>
+                    </Grid>
                 </Grid>
-
-                {/* 明文输入 */}
-                <Grid item xs={12} sm={6} md={4}>
-                    <Box sx={{
-                        height: 270,
-                        width: 360,
-                        background: 'rgba(255,255,255,0.1)',
-                        borderRadius: 4,
-                        p: 3,
-                        backdropFilter: 'blur(12px)',
-                        border: '1px solid rgba(255,255,255,0.3)',
-                        transition: 'all 0.3s',
-                        '&:hover': {
-                            transform: 'translateY(-5px)',
-                            boxShadow: '0 10px 20px rgba(0,255,255,0.2)'
-                        }
-                    }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                            <Typography variant="h5" sx={{ color: '#00ff9d' }}>
-                                📜 明文
-                            </Typography>
-                        </Box>
+                
+                <TextField
+                    fullWidth
+                    label="AES密钥（16/24/32字节）"
+                    variant="outlined"
+                    value={key}
+                    onChange={(e) => setKey(e.target.value)}
+                    sx={{ mb: 1 }}
+                    InputProps={{
+                        startAdornment: (
+                            <InputAdornment position="start">
+                                <VpnKeyIcon color="primary" />
+                            </InputAdornment>
+                        )
+                    }}
+                />
+                <Typography variant="caption" color="text.secondary">
+                    密钥长度必须为16字节(AES-128)、24字节(AES-192)或32字节(AES-256)
+                </Typography>
+            </Paper>
+            
+            <Grid container spacing={3}>
+                <Grid item xs={12} md={6}>
+                    <Paper sx={{ p: 3, height: '100%' }}>
+                        <Typography variant="h6" gutterBottom>
+                            明文
+                        </Typography>
                         <TextField
                             fullWidth
                             multiline
-                            rows={8}
+                            rows={6}
                             value={plaintext}
                             onChange={(e) => setPlaintext(e.target.value)}
                             placeholder="输入要加密的明文..."
-                            sx={{
-                                '& .MuiOutlinedInput-root': {
-                                    color: '#fff',
-                                    borderRadius: 2,
-                                    backgroundColor: 'rgba(0,0,0,0.3)',
-                                    '& fieldset': {
-                                        borderColor: '#4a4a4a',
-                                        transition: 'all 0.3s'
-                                    },
-                                    '&:hover fieldset': { borderColor: '#00ffff' },
-                                    '&.Mui-focused fieldset': {
-                                        borderColor: '#00ffff',
-                                        boxShadow: '0 0 15px rgba(0,255,255,0.3)'
-                                    }
-                                }
-                            }}
+                            variant="outlined"
+                            sx={{ mb: 2 }}
                         />
-                    </Box>
-                </Grid>
-
-                {/* 密文输出 */}
-                <Grid item xs={12} sm={6} md={4}>
-                    <Box sx={{
-                        height: 270,
-                        width: 360,
-                        background: 'rgba(255,255,255,0.1)',
-                        borderRadius: 4,
-                        p: 3,
-                        backdropFilter: 'blur(12px)',
-                        border: '1px solid rgba(255,255,255,0.3)',
-                        transition: 'all 0.3s',
-                        '&:hover': {
-                            transform: 'translateY(-5px)',
-                            boxShadow: '0 10px 20px rgba(0,255,255,0.2)'
-                        }
-                    }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                            <Typography variant="h5" sx={{ color: '#00ff9d' }}>
-                                🔒 密文
-                            </Typography>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <Button
+                                variant="contained"
+                                color="primary"
+                                onClick={() => handleOperation('encrypt')}
+                                disabled={isLoading || !key || !plaintext}
+                                startIcon={isLoading ? <CircularProgress size={20} /> : <SendIcon />}
+                            >
+                                加密
+                            </Button>
+                            <Box>
+                                <Tooltip title="复制明文">
+                                    <IconButton onClick={() => copyToClipboard(plaintext)} disabled={!plaintext}>
+                                        <ContentCopyIcon />
+                                    </IconButton>
+                                </Tooltip>
+                                <Tooltip title="清空所有字段">
+                                    <IconButton onClick={clearFields} color="error">
+                                        <DeleteIcon />
+                                    </IconButton>
+                                </Tooltip>
+                            </Box>
                         </Box>
+                    </Paper>
+                </Grid>
+                
+                <Grid item xs={12} md={6}>
+                    <Paper sx={{ p: 3, height: '100%' }}>
+                        <Typography variant="h6" gutterBottom>
+                            密文
+                        </Typography>
                         <TextField
                             fullWidth
                             multiline
-                            rows={8}
+                            rows={6}
                             value={ciphertext}
                             onChange={(e) => setCiphertext(e.target.value)}
-                            placeholder="加密结果将显示在这里..."
-                            sx={{
-                                '& .MuiOutlinedInput-root': {
-                                    color: '#fff',
-                                    borderRadius: 2,
-                                    backgroundColor: 'rgba(0,0,0,0.3)',
-                                    '& fieldset': {
-                                        borderColor: '#4a4a4a',
-                                        transition: 'all 0.3s'
-                                    },
-                                    '&:hover fieldset': { borderColor: '#00ffff' },
-                                    '&.Mui-focused fieldset': {
-                                        borderColor: '#00ffff',
-                                        boxShadow: '0 0 15px rgba(0,255,255,0.3)'
-                                    }
-                                }
-                            }}
+                            placeholder="加密结果或待解密的密文..."
+                            variant="outlined"
+                            sx={{ mb: 2 }}
                         />
-                    </Box>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <Button
+                                variant="contained"
+                                color="secondary"
+                                onClick={() => handleOperation('decrypt')}
+                                disabled={isLoading || !key || !ciphertext}
+                                startIcon={isLoading ? <CircularProgress size={20} /> : <SendIcon />}
+                            >
+                                解密
+                            </Button>
+                            <Tooltip title="复制密文">
+                                <IconButton onClick={() => copyToClipboard(ciphertext)} disabled={!ciphertext}>
+                                    <ContentCopyIcon />
+                                </IconButton>
+                            </Tooltip>
+                        </Box>
+                    </Paper>
                 </Grid>
             </Grid>
-
-            {/* 控制区域 */}
-            <Box sx={{
-                mt: 0,
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                gap: 4,
-                flexWrap: 'wrap'
-            }}>
-                {/* 操作按钮 */}
-                <Box sx={{
-                    display: 'flex',
-                    justifyContent: 'space-between', // 左右分布
-                    alignItems: 'center',
-                    mt: 4,
-                    gap: 3
-                }}>
-                    {/* 左侧加密按钮 */}
-                    <Button
-                        variant="contained"
-                        onClick={() => handleOperation('encrypt')}
-                        disabled={isLoading}
-                        sx={{
-                            background: 'linear-gradient(45deg, #00ffff 30%, #0080ff 90%)',
-                            color: '#000',
-                            px: 8,  // 加宽按钮
-                            minWidth: 200, // 设置最小宽度
-                            borderRadius: 25,
-                            fontSize: '1.1rem',
-                            '&:hover': {
-                                transform: 'scale(1.05)',
-                                boxShadow: '0 0 25px rgba(0,255,255,0.6)'
-                            },
-                            transition: 'all 0.3s'
-                        }}
-                        endIcon={isLoading && <CircularProgress size={24} sx={{ color: '#000' }} />}
-                    >
-                        加密
-                    </Button>
-
-                    {/* 中间编码选择 */}
-                    <Box sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 2,
-                        background: 'rgba(255,255,255,0.1)',
-                        borderRadius: 4,
-                        p: 2,
-                        backdropFilter: 'blur(10px)'
-                    }}>
-                        <RadioGroup row value={encoding} onChange={(e) => setEncoding(e.target.value)}>
-                            <FormControlLabel
-                                value="hex"
-                                control={<Radio sx={{ color: '#00ffff!important' }} />}
-                                label={<Typography sx={{ color: '#fff' }}>Hex</Typography>}
-                            />
-                            <FormControlLabel
-                                value="base64"
-                                control={<Radio sx={{ color: '#ff00ff!important' }} />}
-                                label={<Typography sx={{ color: '#fff' }}>Base64</Typography>}
-                            />
-                        </RadioGroup>
-                        {/* 新增文字说明 */}
-                        <Typography variant="body1" sx={{
-                            color: '#00ff9d',
-                            ml: 1,
-                            fontSize: '0.9rem'
-                        }}>
-                            密文格式
-                        </Typography>
-                    </Box>
-
-                    {/* 右侧解密按钮 */}
-                    <Button
-                        variant="contained"
-                        onClick={() => handleOperation('decrypt')}
-                        disabled={isLoading}
-                        sx={{
-                            background: 'linear-gradient(45deg, #ff00ff 30%, #8000ff 90%)',
-                            color: '#fff',
-                            px: 8,  // 加宽按钮
-                            minWidth: 200, // 设置最小宽度
-                            borderRadius: 25,
-                            fontSize: '1.1rem',
-                            '&:hover': {
-                                transform: 'scale(1.05)',
-                                boxShadow: '0 0 25px rgba(255,0,255,0.6)'
-                            },
-                            transition: 'all 0.3s'
-                        }}
-                        endIcon={isLoading && <CircularProgress size={24} sx={{ color: '#fff' }} />}
-                    >
-                        解密
-                    </Button>
-                </Box>
-            </Box>
         </Box>
     );
 };
