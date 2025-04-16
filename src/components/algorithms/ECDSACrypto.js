@@ -4,110 +4,128 @@ import {
     Button,
     Typography,
     Box,
+    Grid,
+    Paper,
     CircularProgress,
+    Alert,
+    InputAdornment,
+    Tooltip,
+    IconButton,
+    Tab,
+    Tabs,
+    Divider
 } from '@mui/material';
-import {
-    ecdsaSign,
-    ecdsaVerify,
-    ecdsaGenerateKey
-} from '../../api/ecdsa';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import DeleteIcon from '@mui/icons-material/Delete';
+import SendIcon from '@mui/icons-material/Send';
+import KeyIcon from '@mui/icons-material/Key';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import VerifiedIcon from '@mui/icons-material/Verified';
+import DriveFileRenameOutlineIcon from '@mui/icons-material/DriveFileRenameOutline';
+import { ecdsaSign, ecdsaVerify, ecdsaGenerateKey } from '../../api/ecdsa';
 
 const ECDSACrypto = () => {
     const [publicKeyX, setPublicKeyX] = useState('');
     const [publicKeyY, setPublicKeyY] = useState('');
     const [privateKey, setPrivateKey] = useState('');
-
-    const [signMessage, setSignMessage] = useState('');
-    const [signPrivateKey, setSignPrivateKey] = useState('');
+    const [message, setMessage] = useState('');
     const [signatureR, setSignatureR] = useState('');
     const [signatureS, setSignatureS] = useState('');
-
-    const [verifyPublicKeyX, setVerifyPublicKeyX] = useState('');
-    const [verifyPublicKeyY, setVerifyPublicKeyY] = useState('');
-    const [verifyMessage, setVerifyMessage] = useState('');
-    const [verifySignatureR, setVerifySignatureR] = useState('');
-    const [verifySignatureS, setVerifySignatureS] = useState('');
-    const [verificationResult, setVerificationResult] = useState('');
-
     const [isLoading, setIsLoading] = useState(false);
+    const [isGeneratingKeys, setIsGeneratingKeys] = useState(false);
+    const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
+    const [tabValue, setTabValue] = useState(0);
+    const [verificationResult, setVerificationResult] = useState(null);
+    const [debugInfo, setDebugInfo] = useState('');
 
-    const inputStyle = {
-        '& .MuiOutlinedInput-root': {
-            color: '#fff',
-            borderRadius: 2,
-            backgroundColor: 'rgba(0,0,0,0.3)',
-            '& fieldset': {
-                borderColor: '#4a4a4a',
-                transition: 'all 0.3s'
-            },
-            '&:hover fieldset': { borderColor: '#00ffff' },
-            '&.Mui-focused fieldset': {
-                borderColor: '#00ffff',
-                boxShadow: '0 0 15px rgba(0,255,255,0.3)'
-            }
-        },
-        '& .MuiInputLabel-root': {
-            color: '#00ffff!important'
-        },
-        mb: 2
+    const handleTabChange = (event, newValue) => {
+        setTabValue(newValue);
+        setError('');
+        setSuccess('');
+        setVerificationResult(null);
     };
 
-    const sectionStyle = {
-        background: 'rgba(255,255,255,0.1)',
-        borderRadius: 4,
-        p: 3,
-        backdropFilter: 'blur(12px)',
-        border: '1px solid rgba(255,255,255,0.3)',
-        transition: 'all 0.3s',
-        mb: 4,
-        mx: 'auto',
-        width: 600,
-        '&:hover': {
-            transform: 'translateY(-5px)',
-            boxShadow: '0 10px 20px rgba(0,255,255,0.2)'
+    const generateKeyPair = async () => {
+        try {
+            setError('');
+            setSuccess('');
+            setDebugInfo('');
+            setIsGeneratingKeys(true);
+            
+            setDebugInfo('正在调用API生成ECDSA密钥对...');
+            const response = await ecdsaGenerateKey();
+            
+            setDebugInfo(`API调用完成，数据: ${JSON.stringify(response.data)}`);
+            
+            if (response.data) {
+                setPublicKeyX(response.data.publicKeyX || '');
+                setPublicKeyY(response.data.publicKeyY || '');
+                setPrivateKey(response.data.privateKey || '');
+                setSuccess('ECDSA密钥对生成成功');
+                console.log("设置公钥 X:", response.data.publicKeyX);
+                console.log("设置公钥 Y:", response.data.publicKeyY);
+                setDebugInfo(`公钥X: ${response.data.publicKeyX}, 公钥Y: ${response.data.publicKeyY}`);
+            } else {
+                setError('无法获取密钥对数据');
+            }
+        } catch (error) {
+            console.error("生成密钥对错误:", error);
+            setDebugInfo(`生成密钥对错误: ${error.toString()}, 响应: ${error.response ? JSON.stringify(error.response.data) : '无响应数据'}`);
+            setError(`生成密钥对失败: ${error.response?.data?.message || error.message}`);
+        } finally {
+            setIsGeneratingKeys(false);
         }
     };
 
-    const buttonStyle = (color) => ({
-        background: `linear-gradient(45deg, ${color.start} 30%, ${color.end} 90%)`,
-        color: color.text,
-        px: 6,
-        py: 1.5,
-        borderRadius: 25,
-        fontSize: '1rem',
-        '&:hover': {
-            transform: 'scale(1.05)',
-            boxShadow: `0 0 25px ${color.shadow}`
-        },
-        transition: 'all 0.3s',
-        mb: 2
-    });
-
-    const handleGenerateKey = async () => {
+    // 用于Base64编码输入文本
+    const encodeBase64 = (text) => {
         try {
-            setIsLoading(true);
-            const response = await ecdsaGenerateKey();
-            setPublicKeyX(response.data.publicKeyX);
-            setPublicKeyY(response.data.publicKeyY);
-            setPrivateKey(response.data.privateKey);
-        } catch (error) {
-            alert(`生成失败: ${error.response?.data?.message || error.message}`);
-        } finally {
-            setIsLoading(false);
+            return btoa(text);
+        } catch (e) {
+            console.error("Base64编码错误:", e);
+            setError("文本包含非ASCII字符，无法直接进行Base64编码");
+            return null;
         }
     };
 
     const handleSign = async () => {
         try {
+            setError('');
+            setSuccess('');
+            setDebugInfo('');
             setIsLoading(true);
-            const response = await ecdsaSign(
-                signPrivateKey || privateKey,
-                signMessage
-            );
-            setSignatureR(response.data.r);
-            setSignatureS(response.data.s);
+            
+            // 对消息进行Base64编码
+            const encodedMessage = encodeBase64(message);
+            if (!encodedMessage) return; // 编码错误已在encodeBase64中设置
+            
+            setDebugInfo(`发送签名请求: message=${encodedMessage}, privateKey=${privateKey}`);
+            const response = await ecdsaSign(encodedMessage, privateKey);
+            
+            setDebugInfo(`签名响应: ${JSON.stringify(response.data)}`);
+            
+            if (response.data) {
+                // 检查响应中的r和s字段
+                if (response.data.r !== undefined && response.data.s !== undefined) {
+                    setSignatureR(response.data.r);
+                    setSignatureS(response.data.s);
+                    setSuccess('数字签名生成成功');
+                } else if (response.data.signature) {
+                    // 备选格式：如果返回单个signature字段
+                    setSignatureR(response.data.signature);
+                    setSignatureS('');
+                    setSuccess('数字签名生成成功');
+                } else {
+                    setError('无法解析签名结果: ' + JSON.stringify(response.data));
+                }
+            } else {
+                setError('无法获取签名结果');
+            }
         } catch (error) {
-            alert(`签名失败: ${error.response?.data?.message || error.message}`);
+            console.error("签名错误:", error);
+            setError(`签名失败: ${error.response?.data?.message || error.message}`);
+            setDebugInfo(`签名失败: ${error.toString()}, 响应: ${error.response ? JSON.stringify(error.response.data) : '无响应数据'}`);
         } finally {
             setIsLoading(false);
         }
@@ -115,253 +133,313 @@ const ECDSACrypto = () => {
 
     const handleVerify = async () => {
         try {
+            setError('');
+            setSuccess('');
+            setVerificationResult(null);
+            setDebugInfo('');
             setIsLoading(true);
-            const response = await ecdsaVerify(
-                verifyPublicKeyX || publicKeyX,
-                verifyPublicKeyY || publicKeyY,
-                verifyMessage,
-                verifySignatureR,
-                verifySignatureS
-            );
-            setVerificationResult(response.data.valid ? '验证通过 ✅' : '验证失败 ❌');
+            
+            // 对消息进行Base64编码
+            const encodedMessage = encodeBase64(message);
+            if (!encodedMessage) return; // 编码错误已在encodeBase64中设置
+            
+            // 组合公钥和签名
+            const publicKey = `${publicKeyX},${publicKeyY}`;
+            const signature = `${signatureR},${signatureS}`;
+            
+            setDebugInfo(`发送验证请求: message=${encodedMessage}, signature=${signature}, publicKey=${publicKey}`);
+            const response = await ecdsaVerify(encodedMessage, signature, publicKey);
+            
+            setDebugInfo(`验证响应: ${JSON.stringify(response.data)}`);
+            
+            if (response.data) {
+                // 检查验证结果字段
+                const isValid = 
+                    response.data.valid !== undefined ? response.data.valid : 
+                    response.data.isValid !== undefined ? response.data.isValid : 
+                    response.data.result !== undefined ? response.data.result : null;
+                
+                if (isValid !== null) {
+                    setVerificationResult(isValid);
+                    setSuccess(isValid ? '签名验证通过' : '签名验证失败');
+                } else {
+                    setError('无法确定验证结果: ' + JSON.stringify(response.data));
+                }
+            } else {
+                setError('无法获取验证结果');
+            }
         } catch (error) {
-            alert(`验证失败: ${error.response?.data?.message || error.message}`);
+            console.error("验证错误:", error);
+            setError(`验证失败: ${error.response?.data?.message || error.message}`);
+            setDebugInfo(`验证失败: ${error.toString()}, 响应: ${error.response ? JSON.stringify(error.response.data) : '无响应数据'}`);
         } finally {
             setIsLoading(false);
         }
     };
 
+    const copyToClipboard = (text) => {
+        navigator.clipboard.writeText(text);
+        setSuccess('已复制到剪贴板');
+    };
+
+    const clearFields = () => {
+        setMessage('');
+        setSignatureR('');
+        setSignatureS('');
+        setError('');
+        setSuccess('');
+        setVerificationResult(null);
+        setDebugInfo('');
+    };
+
+    const getFullPublicKey = () => {
+        if (publicKeyX && publicKeyY) {
+            return `${publicKeyX},${publicKeyY}`;
+        } else if (publicKeyX) {
+            return publicKeyX;
+        } else if (publicKeyY) {
+            return publicKeyY;
+        }
+        return '';
+    };
+
     return (
-        <Box sx={{
-            color: '#fff',
-            p: 4,
-            position: 'relative',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            maxWidth: 800,
-            mx: 'auto',
-        }}>
-            <Typography variant="h3" sx={{
-                textAlign: 'center',
-                mb: 4,
-                textShadow: '0 0 5px #00ffff',
-                animation: 'glow 2s ease-in-out infinite',
-                '@keyframes glow': {
-                    '0%': { textShadow: '0 0 10px #00ffff' },
-                    '50%': { textShadow: '0 0 20px #00ffff, 0 0 30px #00ffff' },
-                    '100%': { textShadow: '0 0 10px #00ffff' }
-                }
-            }}>
-                ECDSA 签名/验证
-            </Typography>
-
-            {/* 密钥生成区域 */}
-            <Box sx={sectionStyle}>
-                <Typography variant="h5" sx={{ color: '#00ff9d', mb: 2 }}>
-                    ⚙️ 密钥生成
+        <Box>
+            {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
+            {success && <Alert severity="success" sx={{ mb: 3 }}>{success}</Alert>}
+            {debugInfo && <Alert severity="info" sx={{ mb: 3 }}>{debugInfo}</Alert>}
+            
+            <Paper sx={{ p: 3, mb: 4 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                    <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center' }}>
+                        <KeyIcon sx={{ mr: 1 }} /> ECDSA 密钥管理
                 </Typography>
-
                 <Button
-                    fullWidth
-                    variant="contained"
-                    onClick={handleGenerateKey}
-                    disabled={isLoading}
-                    sx={buttonStyle({
-                        start: '#00ff9d',
-                        end: '#00b34d',
-                        text: '#000',
-                        shadow: 'rgba(0,255,157,0.6)'
-                    })}
-                    endIcon={isLoading && <CircularProgress size={24} sx={{ color: '#000' }} />}
-                >
-                    生成密钥对
+                        variant="outlined"
+                        color="primary"
+                        onClick={generateKeyPair}
+                        disabled={isGeneratingKeys}
+                        startIcon={isGeneratingKeys ? <CircularProgress size={20} /> : <RefreshIcon />}
+                    >
+                        生成新密钥对
                 </Button>
+                </Box>
+                
+                <Divider sx={{ mb: 3 }} />
 
+                <Grid container spacing={3}>
+                    <Grid item xs={12} md={6}>
+                        <Typography variant="subtitle1" gutterBottom fontWeight={500}>
+                            公钥 (用于验证签名)
+                        </Typography>
                 <TextField
-                    label="公钥X坐标"
                     fullWidth
                     multiline
-                    rows={2}
+                            rows={3}
+                            value={getFullPublicKey()}
+                            InputProps={{
+                                readOnly: true,
+                                endAdornment: (
+                                    <InputAdornment position="end">
+                                        <Tooltip title="复制公钥">
+                                            <IconButton onClick={() => copyToClipboard(getFullPublicKey())} disabled={!getFullPublicKey()} edge="end">
+                                                <ContentCopyIcon />
+                                            </IconButton>
+                                        </Tooltip>
+                                    </InputAdornment>
+                                )
+                            }}
+                            placeholder="ECDSA公钥..."
+                            variant="outlined"
+                            sx={{ mb: 1 }}
+                        />
+                        <Box sx={{ display: 'flex', gap: 2 }}>
+                            <TextField
+                                label="X坐标"
+                                size="small"
+                                fullWidth
                     value={publicKeyX}
-                    InputProps={{ readOnly: true }}
-                    sx={inputStyle}
+                                onChange={(e) => setPublicKeyX(e.target.value)}
                 />
-
                 <TextField
-                    label="公钥Y坐标"
+                                label="Y坐标"
+                                size="small"
                     fullWidth
-                    multiline
-                    rows={2}
                     value={publicKeyY}
-                    InputProps={{ readOnly: true }}
-                    sx={inputStyle}
+                                onChange={(e) => setPublicKeyY(e.target.value)}
                 />
+                        </Box>
+                    </Grid>
 
+                    <Grid item xs={12} md={6}>
+                        <Typography variant="subtitle1" gutterBottom fontWeight={500} color="warning.main">
+                            私钥 (用于生成签名，请妥善保管)
+                        </Typography>
                 <TextField
-                    label="私钥"
                     fullWidth
                     multiline
-                    rows={4}
+                            rows={3}
                     value={privateKey}
-                    InputProps={{ readOnly: true }}
-                    sx={inputStyle}
-                />
+                            onChange={(e) => setPrivateKey(e.target.value)}
+                            placeholder="ECDSA私钥..."
+                            variant="outlined"
+                            sx={{ mb: 1 }}
+                            InputProps={{
+                                endAdornment: (
+                                    <InputAdornment position="end">
+                                        <Tooltip title="复制私钥">
+                                            <IconButton onClick={() => copyToClipboard(privateKey)} disabled={!privateKey} edge="end">
+                                                <ContentCopyIcon />
+                                            </IconButton>
+                                        </Tooltip>
+                                    </InputAdornment>
+                                )
+                            }}
+                        />
+                    </Grid>
+                </Grid>
+            </Paper>
+            
+            <Paper sx={{ p: 3 }}>
+                <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+                    <Tabs value={tabValue} onChange={handleTabChange} aria-label="签名验证选项卡">
+                        <Tab icon={<DriveFileRenameOutlineIcon />} label="签名" />
+                        <Tab icon={<VerifiedIcon />} label="验证" />
+                    </Tabs>
             </Box>
 
-            {/* 签名区域 */}
-            <Box sx={sectionStyle}>
-                <Typography variant="h5" sx={{ color: '#00ff9d', mb: 2 }}>
-                    🔒 消息签名
+                {tabValue === 0 && (
+                    <Grid container spacing={3}>
+                        <Grid item xs={12} md={6}>
+                            <Typography variant="h6" gutterBottom>
+                                消息
                 </Typography>
-
                 <TextField
-                    label="私钥（如果不输入则默认使用上方生成的私钥）"
                     fullWidth
                     multiline
-                    rows={4}
-                    value={signPrivateKey}
-                    onChange={(e) => setSignPrivateKey(e.target.value)}
-                    placeholder={privateKey || "输入或自动使用生成的私钥"}
-                    sx={inputStyle}
-                />
-
-                <TextField
-                    label="待签名消息"
-                    fullWidth
-                    multiline
-                    rows={4}
-                    value={signMessage}
-                    onChange={(e) => setSignMessage(e.target.value)}
+                                rows={6}
+                                value={message}
+                                onChange={(e) => setMessage(e.target.value)}
                     placeholder="输入要签名的消息..."
-                    sx={inputStyle}
+                                variant="outlined"
+                                sx={{ mb: 2 }}
                 />
-
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                 <Button
-                    fullWidth
                     variant="contained"
+                                    color="primary"
                     onClick={handleSign}
-                    disabled={isLoading}
-                    sx={buttonStyle({
-                        start: '#00ffff',
-                        end: '#0080ff',
-                        text: '#000',
-                        shadow: 'rgba(0,255,255,0.6)'
-                    })}
-                    endIcon={isLoading && <CircularProgress size={24} sx={{ color: '#000' }} />}
-                >
-                    生成签名
+                                    disabled={isLoading || !privateKey || !message}
+                                    startIcon={isLoading ? <CircularProgress size={20} /> : <DriveFileRenameOutlineIcon />}
+                                >
+                                    使用私钥签名
                 </Button>
-
+                                <Box>
+                                    <Tooltip title="清空所有字段">
+                                        <IconButton onClick={clearFields} color="error">
+                                            <DeleteIcon />
+                                        </IconButton>
+                                    </Tooltip>
+                                </Box>
+                            </Box>
+                        </Grid>
+                        
+                        <Grid item xs={12} md={6}>
+                            <Typography variant="h6" gutterBottom>
+                                数字签名
+                            </Typography>
                 <TextField
-                    label="签名R值"
                     fullWidth
                     multiline
-                    rows={2}
+                                rows={6}
                     value={signatureR}
-                    InputProps={{ readOnly: true }}
-                    sx={inputStyle}
-                />
-
-                <TextField
-                    label="签名S值"
-                    fullWidth
-                    multiline
-                    rows={2}
-                    value={signatureS}
-                    InputProps={{ readOnly: true }}
-                    sx={inputStyle}
-                />
+                                onChange={(e) => setSignatureR(e.target.value)}
+                                placeholder="签名结果将显示在这里..."
+                                variant="outlined"
+                                sx={{ mb: 2 }}
+                            />
+                            <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                                <Tooltip title="复制签名">
+                                    <IconButton onClick={() => copyToClipboard(signatureR)} disabled={!signatureR}>
+                                        <ContentCopyIcon />
+                                    </IconButton>
+                                </Tooltip>
             </Box>
-
-            {/* 验证区域 */}
-            <Box sx={sectionStyle}>
-                <Typography variant="h5" sx={{ color: '#00ff9d', mb: 2 }}>
-                    🔓 签名验证
+                        </Grid>
+                    </Grid>
+                )}
+                
+                {tabValue === 1 && (
+                    <Box>
+                        <Grid container spacing={3}>
+                            <Grid item xs={12} md={6}>
+                                <Typography variant="h6" gutterBottom>
+                                    消息
                 </Typography>
-
                 <TextField
-                    label="公钥X坐标（如果不输入则默认使用上方生成的公钥X坐标）"
                     fullWidth
                     multiline
-                    rows={2}
-                    value={verifyPublicKeyX}
-                    onChange={(e) => setVerifyPublicKeyX(e.target.value)}
-                    placeholder={publicKeyX || "输入或自动使用生成的公钥X坐标"}
-                    sx={inputStyle}
-                />
-
+                                    rows={6}
+                                    value={message}
+                                    onChange={(e) => setMessage(e.target.value)}
+                                    placeholder="输入需要验证的原始消息..."
+                                    variant="outlined"
+                                    sx={{ mb: 2 }}
+                                />
+                            </Grid>
+                            
+                            <Grid item xs={12} md={6}>
+                                <Typography variant="h6" gutterBottom>
+                                    数字签名
+                                </Typography>
                 <TextField
-                    label="公钥Y坐标（如果不输入则默认使用上方生成的公钥Y坐标）"
                     fullWidth
                     multiline
-                    rows={2}
-                    value={verifyPublicKeyY}
-                    onChange={(e) => setVerifyPublicKeyY(e.target.value)}
-                    placeholder={publicKeyY || "输入或自动使用生成的公钥Y坐标"}
-                    sx={inputStyle}
-                />
-
-                <TextField
-                    label="原始消息"
-                    fullWidth
-                    multiline
-                    rows={4}
-                    value={verifyMessage}
-                    onChange={(e) => setVerifyMessage(e.target.value)}
-                    placeholder="输入要验证的原始消息..."
-                    sx={inputStyle}
-                />
-
-                <TextField
-                    label="签名R值"
-                    fullWidth
-                    multiline
-                    rows={2}
-                    value={verifySignatureR}
-                    onChange={(e) => setVerifySignatureR(e.target.value)}
-                    placeholder="输入待验证的签名R值..."
-                    sx={inputStyle}
-                />
-
-                <TextField
-                    label="签名S值"
-                    fullWidth
-                    multiline
-                    rows={2}
-                    value={verifySignatureS}
-                    onChange={(e) => setVerifySignatureS(e.target.value)}
-                    placeholder="输入待验证的签名S值..."
-                    sx={inputStyle}
-                />
-
+                                    rows={6}
+                                    value={signatureR}
+                                    onChange={(e) => setSignatureR(e.target.value)}
+                                    placeholder="输入需要验证的签名..."
+                                    variant="outlined"
+                                    sx={{ mb: 2 }}
+                                />
+                            </Grid>
+                        </Grid>
+                        
+                        <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Button
-                    fullWidth
                     variant="contained"
+                                color="secondary"
                     onClick={handleVerify}
-                    disabled={isLoading}
-                    sx={buttonStyle({
-                        start: '#ff00ff',
-                        end: '#8000ff',
-                        text: '#fff',
-                        shadow: 'rgba(255,0,255,0.6)'
-                    })}
-                    endIcon={isLoading && <CircularProgress size={24} sx={{ color: '#fff' }} />}
+                                disabled={isLoading || !publicKeyX || !publicKeyY || !message || !signatureR}
+                                startIcon={isLoading ? <CircularProgress size={20} /> : <VerifiedIcon />}
                 >
                     验证签名
                 </Button>
 
-                <TextField
-                    label="验证结果"
-                    fullWidth
-                    multiline
-                    rows={2}
-                    value={verificationResult}
-                    InputProps={{ readOnly: true }}
-                    sx={inputStyle}
-                />
+                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                {verificationResult !== null && (
+                                    <Alert 
+                                        severity={verificationResult ? "success" : "error"}
+                                        icon={verificationResult ? <VerifiedIcon /> : false}
+                                        sx={{ mr: 2 }}
+                                    >
+                                        {verificationResult ? "签名有效" : "签名无效"}
+                                    </Alert>
+                                )}
+                                <Tooltip title="清空所有字段">
+                                    <IconButton onClick={clearFields} color="error">
+                                        <DeleteIcon />
+                                    </IconButton>
+                                </Tooltip>
+                            </Box>
             </Box>
+                    </Box>
+                )}
+                
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 3 }}>
+                    注意：ECDSA (椭圆曲线数字签名算法) 提供比传统RSA签名更高效的数字签名功能，广泛应用于区块链、TLS等安全系统。
+                </Typography>
+            </Paper>
         </Box>
     );
 };
