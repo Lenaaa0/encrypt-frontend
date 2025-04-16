@@ -35,6 +35,7 @@ const RSA1024Crypto = () => {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [tabValue, setTabValue] = useState(0);
+    const [debugInfo, setDebugInfo] = useState('');
 
     const handleTabChange = (event, newValue) => {
         setTabValue(newValue);
@@ -44,20 +45,30 @@ const RSA1024Crypto = () => {
         try {
             setError('');
             setSuccess('');
+            setDebugInfo(''); // 清除调试信息
             setIsGeneratingKeys(true);
             
+            setDebugInfo('正在调用API...');
+            console.log('Calling rsa1024GenerateKey()...');
+            
             const response = await rsa1024GenerateKey();
+            console.log('API response:', response);
+            
+            setDebugInfo(`API调用完成，状态: ${response.status}, 数据: ${JSON.stringify(response.data)}`);
             
             if (response.data) {
-                setPublicKey(response.data.publicKey);
-                setPrivateKey(response.data.privateKey);
-                setModulus(response.data.modulus);
+                setPublicKey(response.data.publicKey || '');
+                setPrivateKey(response.data.privateKey || '');
+                setModulus(response.data.modulus || '');
                 setSuccess('密钥对生成成功');
             } else {
                 setError('无法获取密钥对数据');
             }
         } catch (error) {
             console.error("生成密钥对错误:", error);
+            const errorMessage = error.toString();
+            const responseData = error.response ? JSON.stringify(error.response.data) : '无响应数据';
+            setDebugInfo(`生成密钥对错误: ${errorMessage}, 响应: ${responseData}`);
             setError(`生成密钥对失败: ${error.response?.data?.message || error.message}`);
         } finally {
             setIsGeneratingKeys(false);
@@ -70,9 +81,16 @@ const RSA1024Crypto = () => {
             setSuccess('');
             setIsLoading(true);
             
-            const response = operation === 'encrypt'
-                ? await rsa1024Encrypt(plaintext, publicKey, modulus, 'base64')
-                : await rsa1024Decrypt(ciphertext, privateKey, modulus, 'base64');
+            let response;
+            if (operation === 'encrypt') {
+                setDebugInfo(`发送加密请求: data=${plaintext}, key=${publicKey}, modulus=${modulus}`);
+                response = await rsa1024Encrypt(plaintext, publicKey, modulus, 'base64');
+            } else {
+                setDebugInfo(`发送解密请求: data=${ciphertext}, key=${privateKey}, modulus=${modulus}`);
+                response = await rsa1024Decrypt(ciphertext, privateKey, modulus, 'base64');
+            }
+            
+            setDebugInfo(`操作响应: ${JSON.stringify(response.data)}`);
 
             if (response.data.status !== 0) {
                 setError(response.data.message);
@@ -83,12 +101,13 @@ const RSA1024Crypto = () => {
                 setCiphertext(response.data.result);
                 setSuccess('加密成功');
             } else {
-                setPlaintext(response.data.result);
+            setPlaintext(response.data.result);
                 setSuccess('解密成功');
             }
         } catch (error) {
             console.error("操作错误:", error);
             setError(`操作失败: ${error.response?.data?.message || error.message}`);
+            setDebugInfo(`操作失败: ${error.toString()}, 响应: ${error.response ? JSON.stringify(error.response.data) : '无响应数据'}`);
         } finally {
             setIsLoading(false);
         }
@@ -104,19 +123,21 @@ const RSA1024Crypto = () => {
         setCiphertext('');
         setError('');
         setSuccess('');
+        setDebugInfo('');
     };
 
     return (
         <Box>
             {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
             {success && <Alert severity="success" sx={{ mb: 3 }}>{success}</Alert>}
+            {debugInfo && <Alert severity="info" sx={{ mb: 3 }}>{debugInfo}</Alert>}
             
             <Paper sx={{ p: 3, mb: 4 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
                     <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center' }}>
                         <KeyIcon sx={{ mr: 1 }} /> RSA-1024 密钥管理
-                    </Typography>
-                    <Button
+                </Typography>
+                <Button
                         variant="outlined"
                         color="primary"
                         onClick={generateKeyPair}
@@ -124,21 +145,21 @@ const RSA1024Crypto = () => {
                         startIcon={isGeneratingKeys ? <CircularProgress size={20} /> : <RefreshIcon />}
                     >
                         生成新密钥对
-                    </Button>
+                </Button>
                 </Box>
                 
                 <Divider sx={{ mb: 3 }} />
-                
+
                 <Grid container spacing={3}>
                     <Grid item xs={12} md={6}>
                         <Typography variant="subtitle1" gutterBottom fontWeight={500}>
                             公钥 (用于加密)
                         </Typography>
-                        <TextField
-                            fullWidth
-                            multiline
+                <TextField
+                    fullWidth
+                    multiline
                             rows={3}
-                            value={publicKey}
+                    value={publicKey}
                             onChange={(e) => setPublicKey(e.target.value)}
                             placeholder="RSA公钥..."
                             variant="outlined"
@@ -161,11 +182,11 @@ const RSA1024Crypto = () => {
                         <Typography variant="subtitle1" gutterBottom fontWeight={500} color="warning.main">
                             私钥 (用于解密，请妥善保管)
                         </Typography>
-                        <TextField
-                            fullWidth
-                            multiline
+                <TextField
+                    fullWidth
+                    multiline
                             rows={3}
-                            value={privateKey}
+                    value={privateKey}
                             onChange={(e) => setPrivateKey(e.target.value)}
                             placeholder="RSA私钥..."
                             variant="outlined"
@@ -189,11 +210,11 @@ const RSA1024Crypto = () => {
                     <Typography variant="subtitle1" gutterBottom fontWeight={500}>
                         模数 (modulus)
                     </Typography>
-                    <TextField
-                        fullWidth
-                        multiline
+                <TextField
+                    fullWidth
+                    multiline
                         rows={2}
-                        value={modulus}
+                    value={modulus}
                         onChange={(e) => setModulus(e.target.value)}
                         placeholder="RSA模数..."
                         variant="outlined"
@@ -209,8 +230,8 @@ const RSA1024Crypto = () => {
                                 </InputAdornment>
                             )
                         }}
-                    />
-                </Box>
+                />
+            </Box>
             </Paper>
             
             <Paper sx={{ p: 3 }}>
@@ -226,27 +247,27 @@ const RSA1024Crypto = () => {
                         <Grid item xs={12} md={6}>
                             <Typography variant="h6" gutterBottom>
                                 明文
-                            </Typography>
-                            <TextField
-                                fullWidth
-                                multiline
+                </Typography>
+                <TextField
+                    fullWidth
+                    multiline
                                 rows={6}
                                 value={plaintext}
                                 onChange={(e) => setPlaintext(e.target.value)}
-                                placeholder="输入要加密的明文..."
+                    placeholder="输入要加密的明文..."
                                 variant="outlined"
                                 sx={{ mb: 2 }}
                             />
                             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                                <Button
-                                    variant="contained"
+                <Button
+                    variant="contained"
                                     color="primary"
                                     onClick={() => handleOperation('encrypt')}
                                     disabled={isLoading || !publicKey || !modulus || !plaintext}
                                     startIcon={isLoading ? <CircularProgress size={20} /> : <SendIcon />}
                                 >
                                     使用公钥加密
-                                </Button>
+                </Button>
                                 <Box>
                                     <Tooltip title="清空所有输入/输出">
                                         <IconButton onClick={clearFields} color="error">
@@ -261,11 +282,11 @@ const RSA1024Crypto = () => {
                             <Typography variant="h6" gutterBottom>
                                 密文
                             </Typography>
-                            <TextField
-                                fullWidth
-                                multiline
+                <TextField
+                    fullWidth
+                    multiline
                                 rows={6}
-                                value={ciphertext}
+                    value={ciphertext}
                                 onChange={(e) => setCiphertext(e.target.value)}
                                 placeholder="加密结果将显示在这里..."
                                 variant="outlined"
@@ -277,7 +298,7 @@ const RSA1024Crypto = () => {
                                         <ContentCopyIcon />
                                     </IconButton>
                                 </Tooltip>
-                            </Box>
+            </Box>
                         </Grid>
                     </Grid>
                 )}
@@ -287,27 +308,27 @@ const RSA1024Crypto = () => {
                         <Grid item xs={12} md={6}>
                             <Typography variant="h6" gutterBottom>
                                 密文
-                            </Typography>
-                            <TextField
-                                fullWidth
-                                multiline
+                </Typography>
+                <TextField
+                    fullWidth
+                    multiline
                                 rows={6}
                                 value={ciphertext}
                                 onChange={(e) => setCiphertext(e.target.value)}
-                                placeholder="输入要解密的密文..."
+                    placeholder="输入要解密的密文..."
                                 variant="outlined"
                                 sx={{ mb: 2 }}
                             />
                             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                                <Button
-                                    variant="contained"
+                <Button
+                    variant="contained"
                                     color="secondary"
                                     onClick={() => handleOperation('decrypt')}
                                     disabled={isLoading || !privateKey || !modulus || !ciphertext}
                                     startIcon={isLoading ? <CircularProgress size={20} /> : <SendIcon />}
                                 >
                                     使用私钥解密
-                                </Button>
+                </Button>
                                 <Box>
                                     <Tooltip title="清空所有输入/输出">
                                         <IconButton onClick={clearFields} color="error">
@@ -322,11 +343,11 @@ const RSA1024Crypto = () => {
                             <Typography variant="h6" gutterBottom>
                                 明文
                             </Typography>
-                            <TextField
-                                fullWidth
-                                multiline
+                <TextField
+                    fullWidth
+                    multiline
                                 rows={6}
-                                value={plaintext}
+                    value={plaintext}
                                 onChange={(e) => setPlaintext(e.target.value)}
                                 placeholder="解密结果将显示在这里..."
                                 variant="outlined"
@@ -338,7 +359,7 @@ const RSA1024Crypto = () => {
                                         <ContentCopyIcon />
                                     </IconButton>
                                 </Tooltip>
-                            </Box>
+            </Box>
                         </Grid>
                     </Grid>
                 )}
