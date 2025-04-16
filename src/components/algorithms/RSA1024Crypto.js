@@ -240,8 +240,8 @@ const RSA1024Crypto = () => {
                         <Tab icon={<LockIcon />} label="加密" />
                         <Tab icon={<LockOpenIcon />} label="解密" />
                     </Tabs>
-                </Box>
-                
+            </Box>
+
                 {tabValue === 0 && (
                     <Grid container spacing={3}>
                         <Grid item xs={12} md={6}>

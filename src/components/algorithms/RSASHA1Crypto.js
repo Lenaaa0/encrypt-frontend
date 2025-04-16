@@ -143,8 +143,8 @@ const RSASHA1Crypto = () => {
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
                     <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center' }}>
                         <KeyIcon sx={{ mr: 1 }} /> RSA-SHA1 密钥管理
-                    </Typography>
-                    <Button
+                </Typography>
+                <Button
                         variant="outlined"
                         color="primary"
                         onClick={generateKeyPair}
@@ -152,21 +152,21 @@ const RSASHA1Crypto = () => {
                         startIcon={isGeneratingKeys ? <CircularProgress size={20} /> : <RefreshIcon />}
                     >
                         生成新密钥对
-                    </Button>
+                </Button>
                 </Box>
                 
                 <Divider sx={{ mb: 3 }} />
-                
+
                 <Grid container spacing={3}>
                     <Grid item xs={12} md={6}>
                         <Typography variant="subtitle1" gutterBottom fontWeight={500}>
                             公钥 (用于验证签名)
                         </Typography>
-                        <TextField
-                            fullWidth
-                            multiline
+                <TextField
+                    fullWidth
+                    multiline
                             rows={3}
-                            value={publicKey}
+                    value={publicKey}
                             onChange={(e) => setPublicKey(e.target.value)}
                             placeholder="RSA公钥..."
                             variant="outlined"
@@ -189,11 +189,11 @@ const RSASHA1Crypto = () => {
                         <Typography variant="subtitle1" gutterBottom fontWeight={500} color="warning.main">
                             私钥 (用于生成签名，请妥善保管)
                         </Typography>
-                        <TextField
-                            fullWidth
-                            multiline
+                <TextField
+                    fullWidth
+                    multiline
                             rows={3}
-                            value={privateKey}
+                    value={privateKey}
                             onChange={(e) => setPrivateKey(e.target.value)}
                             placeholder="RSA私钥..."
                             variant="outlined"
@@ -217,11 +217,11 @@ const RSASHA1Crypto = () => {
                     <Typography variant="subtitle1" gutterBottom fontWeight={500}>
                         模数 (modulus)
                     </Typography>
-                    <TextField
-                        fullWidth
-                        multiline
+                <TextField
+                    fullWidth
+                    multiline
                         rows={2}
-                        value={modulus}
+                    value={modulus}
                         onChange={(e) => setModulus(e.target.value)}
                         placeholder="RSA模数..."
                         variant="outlined"
@@ -237,8 +237,8 @@ const RSASHA1Crypto = () => {
                                 </InputAdornment>
                             )
                         }}
-                    />
-                </Box>
+                />
+            </Box>
             </Paper>
             
             <Paper sx={{ p: 3 }}>
@@ -247,17 +247,17 @@ const RSASHA1Crypto = () => {
                         <Tab icon={<DriveFileRenameOutlineIcon />} label="签名" />
                         <Tab icon={<VerifiedIcon />} label="验证" />
                     </Tabs>
-                </Box>
-                
+            </Box>
+
                 {tabValue === 0 && (
                     <Grid container spacing={3}>
                         <Grid item xs={12} md={6}>
                             <Typography variant="h6" gutterBottom>
                                 消息
-                            </Typography>
-                            <TextField
-                                fullWidth
-                                multiline
+                </Typography>
+                <TextField
+                    fullWidth
+                    multiline
                                 rows={6}
                                 value={message}
                                 onChange={(e) => setMessage(e.target.value)}
@@ -266,15 +266,15 @@ const RSASHA1Crypto = () => {
                                 sx={{ mb: 2 }}
                             />
                             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                                <Button
-                                    variant="contained"
+                <Button
+                    variant="contained"
                                     color="primary"
-                                    onClick={handleSign}
+                    onClick={handleSign}
                                     disabled={isLoading || !privateKey || !modulus || !message}
                                     startIcon={isLoading ? <CircularProgress size={20} /> : <DriveFileRenameOutlineIcon />}
                                 >
                                     使用私钥签名
-                                </Button>
+                </Button>
                                 <Box>
                                     <Tooltip title="清空所有字段">
                                         <IconButton onClick={clearFields} color="error">
@@ -289,11 +289,11 @@ const RSASHA1Crypto = () => {
                             <Typography variant="h6" gutterBottom>
                                 数字签名
                             </Typography>
-                            <TextField
-                                fullWidth
-                                multiline
+                <TextField
+                    fullWidth
+                    multiline
                                 rows={6}
-                                value={signature}
+                    value={signature}
                                 onChange={(e) => setSignature(e.target.value)}
                                 placeholder="签名结果将显示在这里..."
                                 variant="outlined"
@@ -305,7 +305,7 @@ const RSASHA1Crypto = () => {
                                         <ContentCopyIcon />
                                     </IconButton>
                                 </Tooltip>
-                            </Box>
+            </Box>
                         </Grid>
                     </Grid>
                 )}
@@ -316,10 +316,10 @@ const RSASHA1Crypto = () => {
                             <Grid item xs={12} md={6}>
                                 <Typography variant="h6" gutterBottom>
                                     消息
-                                </Typography>
-                                <TextField
-                                    fullWidth
-                                    multiline
+                </Typography>
+                <TextField
+                    fullWidth
+                    multiline
                                     rows={6}
                                     value={message}
                                     onChange={(e) => setMessage(e.target.value)}
@@ -333,9 +333,9 @@ const RSASHA1Crypto = () => {
                                 <Typography variant="h6" gutterBottom>
                                     数字签名
                                 </Typography>
-                                <TextField
-                                    fullWidth
-                                    multiline
+                <TextField
+                    fullWidth
+                    multiline
                                     rows={6}
                                     value={signature}
                                     onChange={(e) => setSignature(e.target.value)}
@@ -347,16 +347,16 @@ const RSASHA1Crypto = () => {
                         </Grid>
                         
                         <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Button
-                                variant="contained"
+                <Button
+                    variant="contained"
                                 color="secondary"
-                                onClick={handleVerify}
+                    onClick={handleVerify}
                                 disabled={isLoading || !publicKey || !modulus || !message || !signature}
                                 startIcon={isLoading ? <CircularProgress size={20} /> : <VerifiedIcon />}
-                            >
-                                验证签名
-                            </Button>
-                            
+                >
+                    验证签名
+                </Button>
+
                             <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                 {verificationResult !== null && (
                                     <Alert 
@@ -374,7 +374,7 @@ const RSASHA1Crypto = () => {
                                 </Tooltip>
                             </Box>
                         </Box>
-                    </Box>
+            </Box>
                 )}
                 
                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 3 }}>
